@@ -2,11 +2,11 @@
 title: "NDT-Ninja: архитектура"
 date: 2026-07-14
 type: architecture
-status: draft
-stack: "Phaser 3 + Matter.js + PolyK"
+status: reviewed
+stack: "Phaser 3 + Matter.js + PolyK (+ poly-decomp)"
 target: "Браузер (десктоп + мобильный)"
-тема: "Неразрушающий контроль (NDT)"
-связанный_документ: "ndt-ninja-plan.md"
+theme: "Неразрушающий контроль (NDT)"
+related_doc: "ndt-ninja-plan.md"
 ---
 
 # 🥷 NDT-Ninja: архитектура
@@ -33,10 +33,11 @@ target: "Браузер (десктоп + мобильный)"
 | **Слайсинг (разрезание)** | **PolyK** + recreation тел | Доказанно рабочий паттерн для механики Fruit Ninja в браузере |
 | **Альтернатива (макс. перф)** | **Rapier 2D** (`@dimforge/rapier2d`, WASM+SIMD) + **PixiJS** | Если на экране десятки/сотни осколков и Matter.js не тянет |
 
-**Итог:** стартуем на **Phaser 3 + Matter.js + PolyK** — самый быстрый путь к рабочему слайсингу
-с темой. Перф-критичный путь (массовый разлёт осколков) держим в голове как кандидата на
-Rapier+PixiJS, но **только после бенчмарка** (сравнительная производительность физдвижков
-осталась НЕ верифицированной — см. [`ndt-ninja-plan.md`](./ndt-ninja-plan.md), раздел «Риски»).
+**Итог:** стартуем на **Phaser 3 + Matter.js + PolyK + poly-decomp** — самый быстрый путь к
+рабочему слайсингу. Перф-критичный путь (массовый разлёт осколков) **проверяется fail-fast
+бенчмарком в фазах 0 и 3** (количественные пороги — см. [`ndt-ninja-plan.md`](./ndt-ninja-plan.md)).
+При провале после субшагов/raycast-ворот/cap velocity — миграция на Rapier+PixiJS **до** старта
+фаз 4–6. Продуктовый формат — **аркадный таймкиллер**: тема НК косметическая, фокус на juice.
 
 ---
 
@@ -70,8 +71,9 @@ Rapier+PixiJS, но **только после бенчмарка** (сравни
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Bootstrap: Phaser.Game (config: matter physics, FIT)   │
-│  Scenes: Boot → Preload → Menu → Game → GameOver        │
+│  Bootstrap: Phaser.Game (config: matter physics, FIT, landscape)│
+│  Scenes: Boot → Preload → Menu → Game ↔ GameOver        │
+│          + HUD (overlay, scene.launch('HUD') в параллели с Game)│
 ├─────────────────────────────────────────────────────────┤
 │  GameScene (фасад, связывает системы через events)      │
 │                                                         │
@@ -96,9 +98,20 @@ Rapier+PixiJS, но **только после бенчмарка** (сравни
 │  │  screen-shake, haptics, audio   │                    │
 │  └─────────────────────────────────┘                    │
 ├─────────────────────────────────────────────────────────┤
-│  Persistence: localStorage (рекорд, прогресс), config   │
+│  Persistence: Storage.ts (localStorage try/catch, ключ ndt-ninja:hi-score:v1) │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Сцены — жизненный цикл
+
+- **BootScene → PreloadScene → MenuScene.** Линейный старт.
+- **MenuScene.** Кнопка Play, отображение рекорда, mute-toggle. По Play →
+  `scene.start('Game')` + `scene.launch('HUD')`.
+- **GameScene ↔ GameOverScene.** При `isGameOver === true` (потеря жизней или труба):
+  `scene.pause('Game')` + `scene.launch('GameOver')`. GameOverScene — оверлей поверх
+  паузенной GameScene. Кнопка Restart → `scene.stop('GameOver')` + `scene.restart('Game')`.
+- **HUDScene (оверлей).** Запускается параллельно с GameScene через `scene.launch('HUD')`,
+  работает поверх неё. Подписана на EventBus: жизни, счёт, активный меч (пост-MVP).
 
 ### Ключевые системы — как устроены
 
@@ -124,22 +137,83 @@ Rapier+PixiJS, но **только после бенчмарка** (сравни
 
 **▶ SwordSystem (4 меча под тему NDT).** Активный меч задаёт свойства разреза + визуальный стиль:
 
-| Меч | Визуальный эффект (синтез) | Геймплей-свойство |
-|---|---|---|
-| 🗡️ **Кованый** (forged) | Металлический блюр-след, чистый срез | Базовый, ровный разрез |
-| 🔥 **Сварка** (welding) | Искры/брызги (particle emitter), оранжевый glow | Поджигает край среза |
-| ⚡ **Плазма** (plasma) | Шейдер glow + высокотемпературный след, широкий рез | Режет несколько объектов за один свайп |
-| ☢️ **Радиация** (radiation) | Зелёное сияние, частицы, звук счётчика Гейгера | Подсвечивает скрытые дефекты (бонус) |
+| Меч | Визуальный эффект (синтез) | Геймплей-свойство | Измеримый тест (фаза 5) |
+|---|---|---|---|
+| 🗡️ **Кованый** (forged) | Металлический блюр-след, чистый срез | Базовый ровный разрез | 1 болт, 1 свайп → ровно 2 осколка. |
+| 🔥 **Сварка** (welding) | Искры/брызги (particle emitter), оранжевый glow | Поджигает край среза | После разреза — анимация горения на срезе ≥ 500 мс. |
+| ⚡ **Плазма** (plasma) | Шейдер glow + высокотемпературный след, широкий рез | Режет до 3 объектов за свайп | 3 болта в линию, 1 свайп → 3 разреза, 6 осколков. |
+| ☢️ **Радиация** (radiation) | Зелёное сияние, частицы, звук счётчика Гейгера | **Slowmo 2–3 сек** при активации | `scene.time.timeScale` = 0.5 на 2–3 сек; осколки замедляются; green-glow оверлей. |
 
-**▶ BombSystem (трубы).** Труба — это NDT-объект-«бомба»: при разрезе → взрыв (game over или штраф
-по выбору дизайна), screen-shake, взрыв частиц.
+**Slowmo и Matter.js time-scale (меч «Радиация»).** При активации замедляется вся сцена:
+`scene.time.timeScale = 0.5` на 2–3 сек + green-glow оверлей. Для физики Matter.js нужно
+проверить (фаза 5), корректно ли Matter runner замедляется через `scene.time.timeScale`,
+или требуется отдельная настройка `matter.world` (например, увеличение `engine.timing.timeScale`).
+Открытый риск №9 в [`ndt-ninja-plan.md`](./ndt-ninja-plan.md).
 
-**▶ ScoreSystem + прогрессия.** Очки за каждый разрез, множитель комбо за серию разрезов в окне
-времени. Прогрессия — волны с растущей сложностью; рекорд в `localStorage`.
+**▶ SliceEvent — контракт межсистемного обмена (фаза 3).** Единственный канал связи между
+системами — `EventBus` (обёртка над `Phaser.Events.EventEmitter`). Прямых ссылок
+`SliceSystem → ScoreSystem` нет: всё через события.
+
+```typescript
+interface SliceEvent {
+  readonly id: string;
+  readonly timestamp: number;
+  readonly bodyId: number;
+  readonly kind: 'bolt' | 'nut' | 'ruler' | 'standard' | 'pipe';
+  readonly isBomb: boolean;            // true только для 'pipe'
+  readonly slice: { from: Vec2; to: Vec2; angle: number };
+  readonly swordType: SwordType | null; // null в MVP (до фазы 5)
+  readonly fragments: ReadonlyArray<{ vertices; velocity }>;
+}
+```
+
+Event-flow:
+
+```
+InputSystem ──► SliceSystem (детект segment ∩ body)
+                    │
+                    ├─► BodySplitter (PolyK + poly-decomp → фрагменты)
+                    │
+                    └─► EventBus.emit('slice', SliceEvent)
+                              │
+                              ├─► BombSystem:  if (event.isBomb) → мгновенный game over + взрыв
+                              ├─► ScoreSystem: += очки (× комбо в фазе 6)
+                              ├─► FXSystem:    звук + частицы + screen-shake
+                              └─► SwordSystem: (пост-MVP) применение эффекта меча
+```
+
+Контракт фиксируется в фазе 3; фазы 4 и 5 только **расширяют** потребителей, не меняя
+полей SliceEvent. Полный текст контракта — в [`ndt-ninja-plan.md`](./ndt-ninja-plan.md).
+
+**▶ BombSystem (трубы).** Труба — это NDT-объект-«бомба» (`isBomb=true`). При разрезе
+(через SliceEvent с `isBomb === true`) → **мгновенный game over** (независимо от жизней)
++ взрыв + screen-shake. Упущенная (не разрезанная) труба штрафа не несёт — это мина, не цель.
+
+**▶ LifeSystem + failstate (фаза 4, MVP).** 3 жизни. Упущенный режимый объект
+(ушёл за нижний край) → −1 жизнь. При 0 жизнях — `isGameOver = true`. Труба-бомба при разрезе
+→ мгновенный game over (срабатывает независимо от числа жизней). Упущенная труба штрафа не несёт.
+При `isGameOver === true`: `scene.pause('Game')` + `scene.launch('GameOver')`.
+
+| Событие | Следствие |
+|---|---|
+| Режимый объект упущен | `lives -= 1`; при `lives === 0` → game over |
+| Труба разрезана | `isGameOver = true` (мгновенно) + взрыв + screen-shake |
+| Труба упущена | Штрафа нет (мина, не цель) |
+
+**▶ ScoreSystem + прогрессия.** Базовый счёт (MVP, фаза 4) — очки за каждый разрез.
+Множитель комбо за серию разрезов в окне времени (пост-MVP, фаза 6). Волны с растущей
+сложностью (пост-MVP, фаза 6); параметры волн — метрики `WaveConfig` (см. план).
+Рекорд в `localStorage` через `persistence/Storage.ts` (try/catch + версионированный ключ
+`ndt-ninja:hi-score:v1`) — входит в MVP.
+
+**▶ Persistence.** `persistence/Storage.ts` оборачивает `localStorage` в `try/catch`
+(приватный режим / quota exceeded → не падать). Ключи версионированы: `ndt-ninja:hi-score:v1`.
+При смене схемы данных — миграция в новой версии ключа.
 
 > **Важно:** техника themed-эффектов (шейдеры glow/частицы для плазмы/радиации), механика
-> «труб-бомб», комбо и прогрессия **не покрыты источниками** — это дизайн-решения, требующие
-> отдельного прототипирования.
+> «труб-бомб», комбо и прогрессия **не покрыты источниками** — это дизайн-решения.
+> Продуктовые решения зафиксированы: failstate (3 жизни + труба = game over), радиация = slowmo,
+> формат — аркадный таймкиллер (тема НК косметическая). См. [`ndt-ninja-plan.md`](./ndt-ninja-plan.md).
 
 ---
 
