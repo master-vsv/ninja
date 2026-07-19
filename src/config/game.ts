@@ -71,8 +71,13 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
       },
     },
     input: {
-      // Одиночный свайп-pointer. Multi-touch не нужен (один меч за раз).
+      // Одиночный свайп-pointer (основной геймплей).
+      // На планшетах разрешаем multipleTouch для future gesture (zoom/rotate),
+      // но игра обрабатывает только 1 активный свайп (activePointers: 1).
       activePointers: 1,
+      touch: {
+        capture: true, // блокируем стандартные браузерные gesture (preventDefault)
+      },
     },
     // Цепочка сцен: Boot → Preload → Menu → Game (фаза 2 добавляет GameScene).
     // Фаза 4: HUDScene и GameOverScene зарегистрированы в массиве,

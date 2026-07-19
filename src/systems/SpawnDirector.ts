@@ -143,13 +143,13 @@ const BOMB_PERCENT_FALLBACK = 0.2;
 
 /**
  * Доля power-up фигур в spawnRandom (поверх bombPercent). Зависит от уровня:
- * высокая на старте (15%), уменьшается на 1.5% за уровень, минимум 3%.
+ * высокая на старте (40%), уменьшается на 2.5% за уровень, минимум 5%.
  * На высоких уровнях power-up реже → больше challenge.
  *
- * L1=15%, L2=13.5%, L5=9%, L8=4.5%, L9+=3% (floor).
+ * L1=40%, L2=37.5%, L5=30%, L10=17.5%, L16+=5% (floor).
  */
 function computePowerUpPercent(level: number): number {
-  return Math.max(0.03, 0.15 - (level - 1) * 0.015);
+  return Math.max(0.05, 0.40 - (level - 1) * 0.025);
 }
 
 /**
@@ -192,7 +192,7 @@ const NEON_GREEN = 0x39ff14;
  * weldingMask — ice-blue (значения дублируют POWERUP_COLORS соответствующих
  * эффектов, заданы локально для читаемости KIND_COLORS).
  */
-const KIND_COLORS: Record<NDTObjectKind, number> = {
+export const KIND_COLORS: Record<NDTObjectKind, number> = {
   bolt: CYBER.cyan,
   nut: CYBER.cyan,
   ruler: CYBER.cyan,
@@ -506,7 +506,7 @@ export class SpawnDirector {
     const world = this.scene?.matter?.world;
     // BodySplitter мог уже удалить тело из Matter world при разрезе — проверяем,
     // чтобы не дублировать вызов (Matter выбрасывает предупреждение на повторный remove).
-    const bodyStillInWorld = world && ab.body ? world.has(ab.body).length > 0 : false;
+    const bodyStillInWorld = world && ab.body ? world.has(ab.body) : false;
     if (bodyStillInWorld) {
       world!.remove(ab.body);
     }

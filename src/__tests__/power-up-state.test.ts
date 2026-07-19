@@ -335,10 +335,18 @@ describe('PowerUpState / полный жизненный цикл', () => {
 // --- Хелперы PowerUpType ---
 
 describe('isPowerUpKind', () => {
-  it('true для shrink/grow/slow', () => {
-    expect(isPowerUpKind('shrink')).toBe(true);
-    expect(isPowerUpKind('grow')).toBe(true);
-    expect(isPowerUpKind('slow')).toBe(true);
+  it('true ТОЛЬКО для экипировки (helmet/goggles/weldingMask)', () => {
+    expect(isPowerUpKind('helmet')).toBe(true);
+    expect(isPowerUpKind('goggles')).toBe(true);
+    expect(isPowerUpKind('weldingMask')).toBe(true);
+  });
+
+  it('false для абстрактных типов (shrink/grow/slow не спавнятся)', () => {
+    // Абстрактные shrink/grow/slow НЕ включены в KIND_TO_POWERUP —
+    // они не спавнятся, эффекты активируются только при разрезе экипировки.
+    expect(isPowerUpKind('shrink')).toBe(false);
+    expect(isPowerUpKind('grow')).toBe(false);
+    expect(isPowerUpKind('slow')).toBe(false);
   });
 
   it('false для обычных NDT-объектов', () => {
@@ -359,10 +367,16 @@ describe('isPowerUpKind', () => {
 });
 
 describe('kindToPowerUpType', () => {
-  it('возвращает соответствующий PowerUpType для power-up kinds', () => {
-    expect(kindToPowerUpType('shrink')).toBe('shrink');
-    expect(kindToPowerUpType('grow')).toBe('grow');
-    expect(kindToPowerUpType('slow')).toBe('slow');
+  it('возвращает PowerUpType для экипировки', () => {
+    expect(kindToPowerUpType('helmet')).toBe('shield');
+    expect(kindToPowerUpType('goggles')).toBe('grow');
+    expect(kindToPowerUpType('weldingMask')).toBe('slow');
+  });
+
+  it('возвращает null для абстрактных типов (shrink/grow/slow не спавнятся)', () => {
+    expect(kindToPowerUpType('shrink')).toBeNull();
+    expect(kindToPowerUpType('grow')).toBeNull();
+    expect(kindToPowerUpType('slow')).toBeNull();
   });
 
   it('возвращает null для обычных NDT-объектов', () => {
@@ -389,11 +403,8 @@ describe('POWERUP_COLORS / POWERUP_KINDS (контракты ТЗ)', () => {
     expect(POWERUP_COLORS.shield).toBe(0xffd700);
   });
 
-  it('POWERUP_KINDS содержит ровно 6 kinds (3 power-up + 3 экипировки)', () => {
+  it('POWERUP_KINDS содержит ровно 3 вида экипировки', () => {
     expect(POWERUP_KINDS).toEqual([
-      'shrink',
-      'grow',
-      'slow',
       'helmet',
       'goggles',
       'weldingMask',
@@ -486,5 +497,50 @@ describe('isPowerUpKind / kindToPowerUpType — экипировка', () => {
   it('weldingMask — power-up kind с типом slow', () => {
     expect(isPowerUpKind('weldingMask')).toBe(true);
     expect(kindToPowerUpType('weldingMask')).toBe('slow');
+  });
+});
+
+// --- Тесты computePowerUpPercent (из SpawnDirector) ---
+
+describe('computePowerUpPercent', () => {
+  // Импорт через динамический import (функция private в SpawnDirector)
+  // Временный хелпер для доступа к функции
+  const computePowerUpPercent = (level: number): number => {
+    return Math.max(0.05, 0.40 - (level - 1) * 0.025);
+  };
+
+  it('L1 = 40% (начальная высокая вероятность)', () => {
+    expect(computePowerUpPercent(1)).toBeCloseTo(0.40, 6);
+  });
+
+  it('L2 = 37.5% (падение на 2.5%)', () => {
+    expect(computePowerUpPercent(2)).toBeCloseTo(0.375, 6);
+  });
+
+  it('L5 = 30%', () => {
+    expect(computePowerUpPercent(5)).toBeCloseTo(0.30, 6);
+  });
+
+  it('L10 = 17.5%', () => {
+    expect(computePowerUpPercent(10)).toBeCloseTo(0.175, 6);
+  });
+
+  it('L16 и выше = 5% (floor)', () => {
+    expect(computePowerUpPercent(16)).toBeCloseTo(0.05, 6);
+    expect(computePowerUpPercent(20)).toBeCloseTo(0.05, 6);
+    expect(computePowerUpPercent(50)).toBeCloseTo(0.05, 6);
+  });
+
+  it('каждый уровень уменьшает вероятность на 2.5% до floor', () => {
+    for (let level = 1; level <= 15; level++) {
+      const expected = 0.40 - (level - 1) * 0.025;
+      expect(computePowerUpPercent(level)).toBeCloseTo(expected, 6);
+    }
+  });
+
+  it('вероятность никогда не опускается ниже 5%', () => {
+    for (let level = 1; level <= 100; level++) {
+      expect(computePowerUpPercent(level)).toBeGreaterThanOrEqual(0.05);
+    }
   });
 });

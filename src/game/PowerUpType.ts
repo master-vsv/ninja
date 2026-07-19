@@ -50,18 +50,15 @@ export const POWERUP_KINDS: ReadonlyArray<NDTObjectKind> = [
 ];
 
 /**
- * Map NDTObjectKind → PowerUpType. Содержит только power-up kinds.
+ * Map NDTObjectKind → PowerUpType. Содержит ТОЛЬКО экипировку (power-up виды).
  * Используется хелперами isPowerUpKind / kindToPowerUpType.
  *
- * Несколько kinds могут映射иться в один и тот же PowerUpType:
- *   - 'grow' и 'goggles' → 'grow';
- *   - 'slow' и 'weldingMask' → 'slow'.
- * Helmet — единственный kind, активирующий 'shield'.
+ * Абстрактные shrink/grow/slow НЕ включены — они не спавнятся, только
+ * экипировка: helmet→shield, goggles→grow, weldingMask→slow.
+ * Это гарантирует, что power-up эффекты активируются только при разрезе
+ * реальных фигур экипировки, а не абстрактных форм.
  */
 const KIND_TO_POWERUP: Readonly<Record<string, PowerUpType>> = {
-  shrink: 'shrink',
-  grow: 'grow',
-  slow: 'slow',
   helmet: 'shield',
   goggles: 'grow',
   weldingMask: 'slow',

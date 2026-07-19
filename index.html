@@ -7,7 +7,9 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#0a0a1a" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
     <title>NDT-Ninja</title>
     <style>
       :root {
@@ -28,6 +30,10 @@
         overscroll-behavior: none;
         -webkit-user-select: none;
         user-select: none;
+        -webkit-touch-callout: none;
+        /* Блокируем стандартные браузерные gesture (pull-to-refresh и пр.) */
+        touch-action: none;
+        /* Отключаем контекстное меню по долгому тапу */
         -webkit-touch-callout: none;
       }
       #game-container {
