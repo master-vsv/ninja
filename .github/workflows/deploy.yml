@@ -36,17 +36,17 @@ jobs:
     steps:
       # 1. Checkout исходников (shallow clone достаточно для сборки).
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # 2. Конфигурация GitHub Pages (определяет нужный basePath и т.п.).
       - name: Setup Pages
         uses: actions/configure-pages@v6
 
-      # 3. Node.js 20 LTS с кешированием зависимостей npm.
+      # 3. Node.js 24 LTS с кешированием зависимостей npm.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       # 4. Воспроизводимая установка зависимостей по package-lock.json.
