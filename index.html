@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport: запрещаем зум/скролл на мобиле (тактильный свайп не должен скроллить страницу). -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a0a1a" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <title>NDT-Ninja</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #0a0a0a;
+        overflow: hidden;
+        /* На некоторых Android браузер всё равно пытается обрабатывать тач-жесты. */
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        /* Блокируем стандартные браузерные gesture (pull-to-refresh и пр.) */
+        touch-action: none;
+        /* Отключаем контекстное меню по долгому тапу */
+        -webkit-touch-callout: none;
+      }
+      #game-container {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      /*
+       * КРИТИЧНО (архитектура §3): канвас Phaser должен иметь touch-action: none,
+       * иначе браузер перехватит свайп под скролл/обновление страницы и пришлёт
+       * pointercancel вместо pointermove.
+       */
+      #game-container canvas {
+        touch-action: none;
+        display: block;
+        /* Убирает синюю подсветку тапа на мобильных Safari/Chrome. */
+        -webkit-tap-highlight-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Phaser сам вставит сюда <canvas>. id совпадает с GAME_PARENT_ID в src/config/game.ts. -->
+    <div id="game-container"></div>
+    <!-- Точка входа приложения. Vite резолвит /src/main.ts. -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

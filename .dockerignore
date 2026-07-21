@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# Node modules (будут установлены через npm ci)
+node_modules
+npm-debug.log*
+
+# Build output (соберётся внутри контейнера)
+dist
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage
+.nyc_output
+
+# Foam / docs (не нужны в prod)
+docs/plans
+docs/journal
+docs/tasks
+
+# Qwen / Claude configs
+.qwen
+.claude
+
+# Playwright MCP
+.playwright-mcp
+
+# Tokensave
+.tokensave
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# Background tasks
+background-shells

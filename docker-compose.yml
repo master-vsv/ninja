@@ -1,0 +1,56 @@
+version: '3.8'
+
+# Docker Compose для NDT Ninja PWA
+# Запуск на планшете:
+#   - Сборка: docker-compose build
+#   - Запуск: docker-compose up -d
+#   - Доступ: http://<IP_ХОСТА>:8080
+
+services:
+  # Production: nginx с собранной статикой
+  pwa:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: ndt-ninja-pwa
+    ports:
+      - "8080:80"  # доступ из локальной сети
+    restart: unless-stopped
+    networks:
+      - ndt-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # Разрешаем binding на все интерфейсы внутри контейнера
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Development: hot-reload через Vite dev server
+  dev:
+    image: node:24-alpine
+    container_name: ndt-ninja-dev
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./package.json:/app/package.json
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - ndt-network
+    profiles:
+      - dev
+
+networks:
+  ndt-network:
+    driver: bridge

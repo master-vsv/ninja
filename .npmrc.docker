@@ -1,0 +1,2 @@
+# Public npm registry для Docker builds
+registry=https://registry.npmjs.org/
