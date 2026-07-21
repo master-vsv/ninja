@@ -1,0 +1,69 @@
+# Публикация NDT-Ninja (Vite + PWA) на GitHub Pages.
+# URL после включения Pages: https://master-vsv.github.io/ninja/
+# В Settings → Pages → Source нужно выбрать "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  # Автоматический деплой при пуше в основную ветку.
+  push:
+    branches: [main]
+  # Ручной запуск из вкладки Actions.
+  workflow_dispatch:
+
+# Права, необходимые для деплоя на GitHub Pages:
+# - contents: read — чтение исходников репозитория;
+# - pages: write — публикация артефакта в Pages;
+# - id-token: write — выдача OIDC-токена для деплоя (требование deploy-pages).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Гарантирует, что одновременно активен только один деплой;
+# новый запуск отменяет предыдущий, но не наоборот (отменяет "старый" прогресс).
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Привязка к environment даёт историю деплоев во вкладке Environments
+    # и (при желании) возможность добавить reviewers/секреты для прод-окружения.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # 1. Checkout исходников (shallow clone достаточно для сборки).
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Конфигурация GitHub Pages (определяет нужный basePath и т.п.).
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      # 3. Node.js 20 LTS с кешированием зависимостей npm.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 4. Воспроизводимая установка зависимостей по package-lock.json.
+      - name: Install dependencies
+        run: npm ci
+
+      # 5. Сборка. GITHUB_ACTIONS=true переключает base на '/ninja/' (см. vite.config.ts).
+      - name: Build
+        run: npm run build
+
+      # 6. Упаковка каталога dist в pages-artifact.
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: './dist'
+
+      # 7. Публикация артефакта в GitHub Pages.
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

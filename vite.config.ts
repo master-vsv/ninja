@@ -4,9 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Конфиг сборки NDT-Ninja.
 // Phaser тянет собственный bundle, поэтому специальных плагинов не требуется —
 // Vite собирает TypeScript-исходники как ESM.
+
+// Относительный base для локальной разработки; абсолютный подпуть для GitHub Pages.
+// GITHUB_ACTIONS=true автоматически проставляется в CI-среде GitHub Actions.
+const base = process.env.GITHUB_ACTIONS ? '/ninja/' : './';
+
 export default defineConfig({
   // Относительный base — игра должна работать и из подпути (например, GitHub Pages).
-  base: './',
+  base,
   // Канвас Phaser сам управляется через DOM, корневой элемент указывается в main.ts.
   server: {
     host: true,
@@ -31,20 +36,19 @@ export default defineConfig({
         name: 'NDT Ninja',
         short_name: 'NDT Ninja',
         description: 'Клон Fruit Ninja в теме неразрушающего контроля (NDT)',
-        start_url: '/',
         display: 'standalone',
         orientation: 'landscape',
         background_color: '#0a0a1a',
         theme_color: '#0a0a1a',
         icons: [
           {
-            src: '/icon-192.png',
+            src: 'icon-192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable',
           },
           {
-            src: '/icon-512.png',
+            src: 'icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',
